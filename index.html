@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stock Indien Boutique</title>
+
+<style>
+body{
+  font-family:Arial,sans-serif;
+  margin:0;
+  padding:18px;
+  background:#f3f3f3;
+}
+h1{text-align:center}
+.box{
+  background:white;
+  padding:16px;
+  border-radius:12px;
+  margin-bottom:15px;
+}
+input{
+  width:100%;
+  box-sizing:border-box;
+  padding:14px;
+  margin:6px 0;
+  font-size:18px;
+}
+button{
+  padding:14px;
+  margin:5px 2px;
+  font-size:17px;
+  border:0;
+  border-radius:8px;
+}
+.entree{background:#1f9d55;color:white}
+.sortie{background:#d64545;color:white}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:white;
+}
+th,td{
+  padding:9px 4px;
+  border-bottom:1px solid #ddd;
+  text-align:left;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📦 Stock</h1>
+
+<div class="box">
+<input id="code" placeholder="Scanner ou saisir le code-barres" autofocus>
+<input id="nom" placeholder="Nom du produit">
+<input id="taille" placeholder="Taille">
+
+<button class="entree" onclick="mouvement(1)">+ ENTRÉE</button>
+<button class="sortie" onclick="mouvement(-1)">− VENTE</button>
+</div>
+
+<div class="box">
+<input id="recherche" placeholder="Rechercher..." oninput="afficher()">
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Produit</th>
+<th>Taille</th>
+<th>Stock</th>
+</tr>
+</thead>
+<tbody id="liste"></tbody>
+</table>
+
+<script>
+let stock=JSON.parse(localStorage.getItem("stockIndien")||"{}");
+
+function sauvegarder(){
+ localStorage.setItem("stockIndien",JSON.stringify(stock));
+}
+
+function mouvement(qte){
+ const code=document.getElementById("code").value.trim();
+ const nom=document.getElementById("nom").value.trim();
+ const taille=document.getElementById("taille").value.trim();
+
+ if(!code){
+   alert("Scannez un code-barres");
+   return;
+ }
+
+ if(!stock[code]){
+   if(!nom){
+     alert("Premier scan : indiquez le nom du produit.");
+     return;
+   }
+   stock[code]={nom:nom,taille:taille,qte:0};
+ }
+
+ stock[code].qte+=qte;
+
+ sauvegarder();
+ afficher();
+
+ document.getElementById("code").value="";
+ document.getElementById("nom").value="";
+ document.getElementById("taille").value="";
+ document.getElementById("code").focus();
+}
+
+function afficher(){
+ const tbody=document.getElementById("liste");
+ const recherche=document.getElementById("recherche").value.toLowerCase();
+
+ tbody.innerHTML="";
+
+ Object.entries(stock).forEach(([code,p])=>{
+   const texte=(code+" "+p.nom+" "+p.taille).toLowerCase();
+
+   if(!texte.includes(recherche)) return;
+
+   const tr=document.createElement("tr");
+
+   tr.innerHTML=
+   "<td>"+code+"</td>"+
+   "<td>"+p.nom+"</td>"+
+   "<td>"+p.taille+"</td>"+
+   "<td><strong>"+p.qte+"</strong></td>";
+
+   tbody.appendChild(tr);
+ });
+}
+
+document.getElementById("code").addEventListener("keydown",function(e){
+ if(e.key==="Enter"){
+   mouvement(1);
+ }
+});
+
+afficher();
+</script>
+
+</body>
+</html>
