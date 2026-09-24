@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stock Indien Boutique V2</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+body{
+  font-family:Arial,sans-serif;
+  margin:0;
+  padding:16px;
+  background:#f3f3f3;
+}
+h1{text-align:center;font-size:25px}
+h2{margin-top:5px}
+.box{
+  background:white;
+  padding:16px;
+  border-radius:12px;
+  margin-bottom:15px;
+}
+input{
+  width:100%;
+  box-sizing:border-box;
+  padding:13px;
+  margin:6px 0;
+  font-size:17px;
+}
+button{
+  padding:13px;
+  margin:5px 2px;
+  font-size:16px;
+  border:0;
+  border-radius:8px;
+}
+.photo{background:#555;color:white}
+.creer{background:#1769aa;color:white}
+.entree{background:#1f9d55;color:white}
+.sortie{background:#d64545;color:white}
+.export{background:#333;color:white}
+.effacer{background:#777;color:white}
+
+#apercuPhoto{
+  display:none;
+  width:120px;
+  max-height:120px;
+  object-fit:contain;
+  margin:10px auto;
+  border-radius:8px;
+}
+
+.tailles{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:10px 0;
+}
+.tailles label{
+  background:#eee;
+  padding:10px;
+  border-radius:8px;
+  font-weight:bold;
+}
+.tailles input{
+  width:auto;
+}
+
+.etiquette{
+  background:white;
+  border:1px solid #bbb;
+  margin:10px 0;
+  padding:8px;
+  text-align:center;
+}
+.etiquette img{
+  width:55px;
+  height:55px;
+  object-fit:contain;
+}
+.etiquette svg{
+  max-width:100%;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:white;
+}
+th,td{
+  padding:8px 3px;
+  border-bottom:1px solid #ddd;
+  text-align:left;
+  font-size:14px;
+}
+.stock{
+  font-weight:bold;
+  font-size:17px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📦 Stock Indien Boutique V2</h1>
+
+<div class="box">
+<h2>📸 Créer un produit</h2>
+
+<input
+ id="photo"
+ type="file"
+ accept="image/*"
+ capture="environment"
+ onchange="chargerPhoto(event)"
+>
+
+<img id="apercuPhoto">
+
+<input id="nouveauNom" placeholder="Nom du produit">
+
+<input
+ id="reference"
+ placeholder="Référence (ex : 607848-BC)"
+>
+
+<input
+ id="couleur"
+ placeholder="Couleur (facultatif)"
+>
+
+<p><b>Tailles disponibles :</b></p>
+
+<div class="tailles">
+<label><input type="checkbox" value="XS"> XS</label>
+<label><input type="checkbox" value="S"> S</label>
+<label><input type="checkbox" value="M"> M</label>
+<label><input type="checkbox" value="L"> L</label>
+<label><input type="checkbox" value="XL"> XL</label>
+<label><input type="checkbox" value="2XL"> 2XL</label>
+<label><input type="checkbox" value="3XL"> 3XL</label>
+<label><input type="checkbox" value="4XL"> 4XL</label>
+<label><input type="checkbox" value="5XL"> 5XL</label>
+</div>
+
+<button class="creer" onclick="creerProduit()">
+Créer les codes-barres
+</button>
+
+<div id="etiquettes"></div>
+</div>
+
+<div class="box">
+<h2>📲 Stock / Scan</h2>
+
+<input
+ id="code"
+ placeholder="Scanner ou saisir le code-barres"
+ autocapitalize="characters"
+>
+
+<input id="nom" placeholder="Nom du produit">
+<input id="taille" placeholder="Taille">
+
+<button class="entree" onclick="mouvement(1)">
++ ENTRÉE
+</button>
+
+<button class="sortie" onclick="mouvement(-1)">
+− VENTE
+</button>
+</div>
+
+<div class="box">
+<input
+ id="recherche"
+ placeholder="🔎 Rechercher produit, taille ou code..."
+ oninput="afficher()"
+>
+
+<button class="export" onclick="exportCSV()">
+Exporter le stock
+</button>
+
+<button class="effacer" onclick="toutEffacer()">
+Effacer le stock
+</button>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Produit</th>
+<th>Taille</th>
+<th>Stock</th>
+</tr>
+</thead>
+<tbody id="liste"></tbody>
+</table>
+
+<script>
+
+let stock =
+JSON.parse(localStorage.getItem("stockIndienV2") || "{}");
+
+let photoProduit="";
+
+function chargerPhoto(event){
+  const fichier=event.target.files[0];
+  if(!fichier)return;
+
+  const lecteur=new FileReader();
+
+  lecteur.onload=function(e){
+    photoProduit=e.target.result;
+    const img=document.getElementById("apercuPhoto");
+    img.src=photoProduit;
+    img.style.display="block";
+  };
+
+  lecteur.readAsDataURL(fichier);
+}
+
+function nettoyerCode(texte){
+  return texte
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g,"-")
+    .replace(/[^A-Z0-9\-]/g,"");
+}
+
+function creerProduit(){
+
+  const nom=
+    document.getElementById("nouveauNom").value.trim();
+
+  let reference=
+    nettoyerCode(document.getElementById("reference").value);
+
+  const couleur=
+    document.getElementById("couleur").value.trim();
+
+  if(!nom){
+    alert("Indiquez le nom du produit.");
+    return;
+  }
+
+  if(!reference){
+    reference="IB-"+Date.now().toString().slice(-8);
+    document.getElementById("reference").value=reference;
+  }
+
+  const tailles=[
+    ...document.querySelectorAll(
+      ".tailles input:checked"
+    )
+  ].map(x=>x.value);
+
+  if(tailles.length===0){
+    alert("Sélectionnez au moins une taille.");
+    return;
+  }
+
+  const zone=document.getElementById("etiquettes");
+  zone.innerHTML="";
+
+  tailles.forEach((taille,index)=>{
+
+    const code=reference+"-"+taille;
+
+    if(!stock[code]){
+      stock[code]={
+        nom:nom,
+        taille:taille,
+        couleur:couleur,
+        quantite:0
+      };
+    }
+
+    const div=document.createElement("div");
+    div.className="etiquette";
+
+    let imageHTML="";
+    if(photoProduit){
+      imageHTML='<img src="'+photoProduit+'"><br>';
+    }
+
+    div.innerHTML=
+      imageHTML+
+      "<b>"+nom+"</b><br>"+
+      (couleur ? couleur+" · " : "")+
+      "<b>"+taille+"</b><br>"+
+      '<svg id="bar'+index+'"></svg>'+
+      "<br><small>"+code+"</small>";
+
+    zone.appendChild(div);
+
+    setTimeout(()=>{
+      JsBarcode(
+        "#bar"+index,
+        code,
+        {
+          format:"CODE128",
+          displayValue:false,
+          height:45,
+          margin:3
+        }
+      );
+    },0);
+
+  });
+
+  sauvegarder();
+  afficher();
+}
+
+function sauvegarder(){
+  localStorage.setItem(
+    "stockIndienV2",
+    JSON.stringify(stock)
+  );
+}
+
+function mouvement(qte){
+
+  const code=
+    document.getElementById("code").value.trim().toUpperCase();
+
+  const nom=
+    document.getElementById("nom").value.trim();
+
+  const taille=
+    document.getElementById("taille").value.trim();
+
+  if(!code){
+    alert("Scannez ou saisissez un code-barres.");
+    return;
+  }
+
+  if(!stock[code]){
+
+    if(qte<0){
+      alert("Produit inconnu.");
+      return;
+    }
+
+    if(!nom){
+      alert("Indiquez le nom du produit.");
+      return;
+    }
+
+    stock[code]={
+      nom:nom,
+      taille:taille,
+      quantite:0
+    };
+  }
+
+  stock[code].quantite+=qte;
+
+  if(stock[code].quantite<0){
+    stock[code].quantite=0;
+  }
+
+  sauvegarder();
+  afficher();
+
+  document.getElementById("code").value="";
+  document.getElementById("nom").value="";
+  document.getElementById("taille").value="";
+}
+
+function afficher(){
+
+  const recherche=
+    document.getElementById("recherche")
+    .value.toLowerCase();
+
+  const liste=document.getElementById("liste");
+  liste.innerHTML="";
+
+  Object.keys(stock)
+  .sort((a,b)=>stock[a].nom.localeCompare(stock[b].nom))
+  .forEach(code=>{
+
+    const p=stock[code];
+
+    const texte=
+      (code+" "+p.nom+" "+p.taille).toLowerCase();
+
+    if(!texte.includes(recherche))return;
+
+    const tr=document.createElement("tr");
+
+    tr.innerHTML=
+      "<td>"+code+"</td>"+
+      "<td>"+p.nom+"</td>"+
+      "<td>"+p.taille+"</td>"+
+      "<td class='stock'>"+p.quantite+"</td>";
+
+    liste.appendChild(tr);
+  });
+}
+
+function exportCSV(){
+
+  let csv="Code;Produit;Taille;Stock\n";
+
+  Object.keys(stock).forEach(code=>{
+    const p=stock[code];
+
+    csv+=
+      code+";"+
+      p.nom+";"+
+      p.taille+";"+
+      p.quantite+"\n";
+  });
+
+  const blob=new Blob(
+    [csv],
+    {type:"text/csv;charset=utf-8"}
+  );
+
+  const lien=document.createElement("a");
+  lien.href=URL.createObjectURL(blob);
+  lien.download="stock-indien-V2.csv";
+  lien.click();
+}
+
+function toutEffacer(){
+
+  if(confirm("Effacer tout le stock V2 ?")){
+    stock={};
+    sauvegarder();
+    afficher();
+  }
+}
+
+document
+.getElementById("code")
+.addEventListener("keydown",function(e){
+
+  if(e.key==="Enter"){
+    e.preventDefault();
+    mouvement(1);
+  }
+});
+
+afficher();
+
+</script>
+</body>
+</html>
