@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stock Indien Boutique</title>
 
 <style>
@@ -13,12 +13,14 @@ body{
   background:#f3f3f3;
 }
 h1{text-align:center}
+
 .box{
   background:white;
   padding:16px;
   border-radius:12px;
   margin-bottom:15px;
 }
+
 input{
   width:100%;
   box-sizing:border-box;
@@ -26,6 +28,7 @@ input{
   margin:6px 0;
   font-size:18px;
 }
+
 button{
   padding:14px;
   margin:5px 2px;
@@ -33,39 +36,78 @@ button{
   border:0;
   border-radius:8px;
 }
+
 .entree{background:#1f9d55;color:white}
 .sortie{background:#d64545;color:white}
+.export{background:#333;color:white}
+.effacer{background:#777;color:white}
+
 table{
   width:100%;
   border-collapse:collapse;
   background:white;
 }
+
 th,td{
   padding:9px 4px;
   border-bottom:1px solid #ddd;
   text-align:left;
+}
+
+.stock{
+  font-weight:bold;
+  font-size:18px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>📦 Stock</h1>
+<h1>📦 Stock Indien Boutique</h1>
 
 <div class="box">
-<input id="code" placeholder="Scanner ou saisir le code-barres" autofocus>
+
+<input
+ id="code"
+ placeholder="Scanner ou saisir le code-barres"
+ inputmode="numeric"
+ autofocus
+>
+
 <input id="nom" placeholder="Nom du produit">
+
 <input id="taille" placeholder="Taille">
 
-<button class="entree" onclick="mouvement(1)">+ ENTRÉE</button>
-<button class="sortie" onclick="mouvement(-1)">− VENTE</button>
+<button class="entree" onclick="mouvement(1)">
++ ENTRÉE
+</button>
+
+<button class="sortie" onclick="mouvement(-1)">
+− VENTE
+</button>
+
 </div>
 
 <div class="box">
-<input id="recherche" placeholder="Rechercher..." oninput="afficher()">
+
+<input
+ id="recherche"
+ placeholder="🔎 Rechercher produit, taille ou code..."
+ oninput="afficher()"
+>
+
+<button class="export" onclick="exportCSV()">
+Exporter le stock
+</button>
+
+<button class="effacer" onclick="toutEffacer()">
+Effacer le stock
+</button>
+
 </div>
 
 <table>
+
 <thead>
 <tr>
 <th>Code</th>
@@ -74,75 +116,173 @@ th,td{
 <th>Stock</th>
 </tr>
 </thead>
+
 <tbody id="liste"></tbody>
+
 </table>
 
 <script>
-let stock=JSON.parse(localStorage.getItem("stockIndien")||"{}");
+
+let stock =
+JSON.parse(localStorage.getItem("stockIndien") || "{}");
 
 function sauvegarder(){
- localStorage.setItem("stockIndien",JSON.stringify(stock));
+  localStorage.setItem(
+    "stockIndien",
+    JSON.stringify(stock)
+  );
 }
 
 function mouvement(qte){
- const code=document.getElementById("code").value.trim();
- const nom=document.getElementById("nom").value.trim();
- const taille=document.getElementById("taille").value.trim();
 
- if(!code){
-   alert("Scannez un code-barres");
-   return;
- }
+  const code =
+  document.getElementById("code").value.trim();
 
- if(!stock[code]){
-   if(!nom){
-     alert("Premier scan : indiquez le nom du produit.");
-     return;
-   }
-   stock[code]={nom:nom,taille:taille,qte:0};
- }
+  const nom =
+  document.getElementById("nom").value.trim();
 
- stock[code].qte+=qte;
+  const taille =
+  document.getElementById("taille").value.trim();
 
- sauvegarder();
- afficher();
+  if(!code){
+    alert("Scannez ou saisissez un code-barres.");
+    return;
+  }
 
- document.getElementById("code").value="";
- document.getElementById("nom").value="";
- document.getElementById("taille").value="";
- document.getElementById("code").focus();
+  if(!stock[code]){
+
+    if(qte < 0){
+      alert("Produit inconnu. Faites d'abord une entrée.");
+      return;
+    }
+
+    if(!nom){
+      alert("Premier scan : indiquez le nom du produit.");
+      return;
+    }
+
+    stock[code] = {
+      nom: nom,
+      taille: taille,
+      quantite: 0
+    };
+  }
+
+  stock[code].quantite += qte;
+
+  if(stock[code].quantite < 0){
+    stock[code].quantite = 0;
+  }
+
+  sauvegarder();
+  afficher();
+
+  document.getElementById("code").value="";
+  document.getElementById("nom").value="";
+  document.getElementById("taille").value="";
+
+  document.getElementById("code").focus();
 }
 
 function afficher(){
- const tbody=document.getElementById("liste");
- const recherche=document.getElementById("recherche").value.toLowerCase();
 
- tbody.innerHTML="";
+  const recherche =
+  document.getElementById("recherche")
+  .value
+  .toLowerCase();
 
- Object.entries(stock).forEach(([code,p])=>{
-   const texte=(code+" "+p.nom+" "+p.taille).toLowerCase();
+  const liste =
+  document.getElementById("liste");
 
-   if(!texte.includes(recherche)) return;
+  liste.innerHTML="";
 
-   const tr=document.createElement("tr");
+  Object.keys(stock)
+  .sort((a,b)=>
+    stock[a].nom.localeCompare(stock[b].nom)
+  )
+  .forEach(code=>{
 
-   tr.innerHTML=
-   "<td>"+code+"</td>"+
-   "<td>"+p.nom+"</td>"+
-   "<td>"+p.taille+"</td>"+
-   "<td><strong>"+p.qte+"</strong></td>";
+    const produit=stock[code];
 
-   tbody.appendChild(tr);
- });
+    const texte=
+    (
+      code+" "+
+      produit.nom+" "+
+      produit.taille
+    ).toLowerCase();
+
+    if(!texte.includes(recherche)) return;
+
+    const ligne=document.createElement("tr");
+
+    ligne.innerHTML=
+    "<td>"+code+"</td>"+
+    "<td>"+produit.nom+"</td>"+
+    "<td>"+produit.taille+"</td>"+
+    "<td class='stock'>"+produit.quantite+"</td>";
+
+    liste.appendChild(ligne);
+
+  });
+
 }
 
-document.getElementById("code").addEventListener("keydown",function(e){
- if(e.key==="Enter"){
-   mouvement(1);
- }
+function exportCSV(){
+
+  let csv="Code;Produit;Taille;Stock\n";
+
+  Object.keys(stock).forEach(code=>{
+
+    const p=stock[code];
+
+    csv +=
+    code+";"+
+    p.nom+";"+
+    p.taille+";"+
+    p.quantite+"\n";
+
+  });
+
+  const blob =
+  new Blob([csv],{
+    type:"text/csv;charset=utf-8"
+  });
+
+  const lien=document.createElement("a");
+
+  lien.href=URL.createObjectURL(blob);
+  lien.download="stock-indien-boutique.csv";
+
+  lien.click();
+
+}
+
+function toutEffacer(){
+
+  if(confirm(
+    "Voulez-vous vraiment effacer tout le stock ?"
+  )){
+    stock={};
+    sauvegarder();
+    afficher();
+  }
+
+}
+
+/* La touche Entrée après un scan ajoute automatiquement 1 */
+document
+.getElementById("code")
+.addEventListener("keydown",function(e){
+
+  if(e.key==="Enter"){
+    e.preventDefault();
+    mouvement(1);
+  }
+
 });
 
 afficher();
+
 </script>
 
 </body>
